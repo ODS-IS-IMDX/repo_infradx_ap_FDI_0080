@@ -16,7 +16,7 @@ jobs:
       AWS_ACCOUNT: 814396194035                                # AWSアカウントID
       IAM_ROLE_NAME: infradx-dev-iam-role-oidc                 # IAM Role名を記載
       instance-id: "i-0be9d3845dd335f6c"
-      bucket-name: "sentan-python-app-deploy-test-bucket"
-      path: "App/functions/"
+      bucket-name: "infradx-dev-s3-bckt-cicd-814396194035"
+      repo_path: "App/functions/"
       repo: "repo_infradx_ap_FDI_0080"
-      file-name: "FDI_0020.py"
+      instance_path: "/infradx/app/infradx-batch-db/functions"
