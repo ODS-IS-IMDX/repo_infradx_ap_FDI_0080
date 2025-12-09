@@ -135,7 +135,9 @@ def truncate_fac_data_master_table(proc_table_info):
         "RESTART IDENTITY"
     )
     try:
-        Database.execute_query(db_connection, logger, query, raise_exception=True)
+        Database.execute_query_no_commit(
+            db_connection, logger, query, raise_exception=True
+        )
     except Exception:
         logger.error(
             "BPE0044",
@@ -293,7 +295,9 @@ def insert_fac_data_master_table(proc_table_info):
         )
 
         try:
-            Database.execute_query(db_connection, logger, query, raise_exception=True)
+            Database.execute_query_no_commit(
+                db_connection, logger, query, raise_exception=True
+            )
         except Exception:
             logger.error(
                 "BPE0044",
