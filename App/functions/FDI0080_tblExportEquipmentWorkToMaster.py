@@ -207,9 +207,13 @@ def insert_fac_data_master_table(proc_table_info):
     for row in result:
         work_table_record.append(row)
 
-    # シークレット設定値（バッチ）から[文字列⇒数値型変換カラム一覧]を取得し配列に格納する
+    # シークレット設定値(バッチ)から[文字列⇒数値型変換カラム一覧]を取得し配列に格納する
     str_to_num_columns = []
     str_to_num_columns = secret_props.get("char_to_numeric_columns").split(",")
+
+    # シークレット設定値(バッチ)から[日付→数値型変換カラム一覧]を取得し配列に格納する
+    date_to_num_columns = []
+    date_to_num_columns = secret_props.get("date_to_numeric_columns").split(",")
 
     # 一時テーブル名からプレフィックスのwork_を取り除く
     prefix_mg_id = None
@@ -218,12 +222,24 @@ def insert_fac_data_master_table(proc_table_info):
     for idx, record in enumerate(work_table_record, start=1):
         work_table = dict(zip(work_table_physical_columns, record))
 
-        # 一時テーブル物理カラム名が[文字列⇒数値型変換カラム一覧]に含まれている場合、カラム値を数値型に変換
+        # 一時テーブル物理カラム名が[文字列⇒数値型変換カラム一覧]または[日付→数値型変換カラム一覧]に含まれている場合、カラム値を変換
         for key in work_table.keys():
             if key in str_to_num_columns:
-                if work_table[key] is None:
-                    work_table[key] = " "
-                work_table[key] = f"NULLIF('{work_table[key]}', ' ')::NUMERIC"
+                work_table[key] = (
+                    f"CASE WHEN NULLIF(TRIM({DB_WORK_SCHEMA}."
+                    f"{proc_table_info['work_table_name']}.{key}), '') IS NULL "
+                    f"THEN NULL ELSE REGEXP_REPLACE({DB_WORK_SCHEMA}."
+                    f"{proc_table_info['work_table_name']}.{key}, "
+                    f"'[^0-9]', '', 'g')::numeric END"
+                )
+            elif key in date_to_num_columns:
+                work_table[key] = (
+                    f"CASE WHEN {DB_WORK_SCHEMA}."
+                    f"{proc_table_info['work_table_name']}.{key} IS NULL "
+                    f"THEN NULL ELSE TO_CHAR({DB_WORK_SCHEMA}."
+                    f"{proc_table_info['work_table_name']}.{key}, "
+                    f"'YYYYMMDD')::numeric END"
+                )
 
         # 任意項目1～5を結合してひとつにまとめる
         for key in [
@@ -255,13 +271,15 @@ def insert_fac_data_master_table(proc_table_info):
             elif col == "created_at":
                 Values.append("NOW()")
             elif col in work_table.keys():
-                # 一時テーブルに存在し、かつ文字列⇒数値型変換カラムの場合
-                if col in str_to_num_columns and work_table[col].startswith("NULLIF("):
+                # 一時テーブルに存在し、かつ文字列⇒数値型変換カラムまたは日付⇒数値型変換カラムの場合
+                if (col in str_to_num_columns or col in date_to_num_columns) and (
+                    work_table[col].startswith("CASE") or work_table[col] == "NULL"
+                ):
                     Values.append(f"{work_table[col]}")
                 # 一時テーブルに存在するがNULLの場合
                 elif work_table[col] is None:
                     Values.append("NULL")
-                # 一時テーブルに存在し、かつ文字列⇒数値型変換カラムでない場合
+                # 一時テーブルに存在し、かつ文字列⇒数値型変換カラムでも日付⇒数値型変換カラムでもない場合
                 else:
                     Values.append(f"'{work_table[col]}'")
             # 上記以外で一時テーブルに存在しない場合
@@ -272,7 +290,8 @@ def insert_fac_data_master_table(proc_table_info):
             f"INSERT INTO {DB_FAC_SCHEMA}."
             f"{proc_table_info['fac_data_master_table_name']} "
             f"({', '.join(fac_data_master_table_physical_columns)}) "
-            f"VALUES ({', '.join(Values)})"
+            f"SELECT {', '.join(Values)} "
+            f"FROM {DB_WORK_SCHEMA}.{proc_table_info['work_table_name']}"
         )
 
         try:
