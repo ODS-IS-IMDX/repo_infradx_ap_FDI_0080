@@ -241,13 +241,18 @@ def insert_fac_data_master_table(proc_table_info):
                     f"'YYYYMMDD')::numeric END"
                 )
 
-        # 任意項目1～5を結合してひとつにまとめる
+        # 任意項目1～10を結合してひとつにまとめる
         for key in [
             "opattr_1",
             "opattr_2",
             "opattr_3",
             "opattr_4",
             "opattr_5",
+            "opattr_6",
+            "opattr_7",
+            "opattr_8",
+            "opattr_9",
+            "opattr_10",
         ]:
             if work_table[key] is None:
                 work_table[key] = " "
@@ -256,7 +261,12 @@ def insert_fac_data_master_table(proc_table_info):
             f"COALESCE(NULLIF('{work_table['opattr_2']}', ' '), '{{}}')::jsonb || "
             f"COALESCE(NULLIF('{work_table['opattr_3']}', ' '), '{{}}')::jsonb || "
             f"COALESCE(NULLIF('{work_table['opattr_4']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_5']}', ' '), '{{}}')::jsonb)::text"
+            f"COALESCE(NULLIF('{work_table['opattr_5']}', ' '), '{{}}')::jsonb || "
+            f"COALESCE(NULLIF('{work_table['opattr_6']}', ' '), '{{}}')::jsonb || "
+            f"COALESCE(NULLIF('{work_table['opattr_7']}', ' '), '{{}}')::jsonb || "
+            f"COALESCE(NULLIF('{work_table['opattr_8']}', ' '), '{{}}')::jsonb || "
+            f"COALESCE(NULLIF('{work_table['opattr_9']}', ' '), '{{}}')::jsonb || "
+            f"COALESCE(NULLIF('{work_table['opattr_10']}', ' '), '{{}}')::jsonb)::text"
         )
         Values = []
         for col in fac_data_master_table_physical_columns:
