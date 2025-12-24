@@ -82,8 +82,8 @@ def validate_import_id(import_id_list):
         valid_import_id_list.append(proc_import_id)
 
         # 自然数チェックのエラーが発生した場合、正常な取込IDのみ5.取込管理テーブルの更新を行う
-        if error_detail:
-            update_import_management_all(valid_import_id_list, error_detail, True)
+    if error_detail:
+        update_import_management_all(valid_import_id_list, error_detail, True)
 
 
 # 設備データ管理マスタDBと一時DBの存在チェック
@@ -157,13 +157,15 @@ def truncate_fac_data_master_table(proc_table_info):
 #   一時DBのデータに属性を追加し、設備データ管理マスタＤＢへ登録
 def insert_fac_data_master_table(proc_table_info):
 
-    # [設備データ管理マスタテーブル物理カラム名一覧]を取得
+    # [設備データ管理マスタテーブル物理カラム名一覧]と[カラム型情報]を取得
     fac_data_master_table_physical_columns = []
+    fac_data_master_column_types = {}
 
     query = (
-        "SELECT column_name "
+        "SELECT column_name, data_type "
         "FROM information_schema.columns "
         f"WHERE table_schema = '{DB_FAC_SCHEMA}' AND table_name = %s "
+        "ORDER BY ordinal_position"
     )
 
     result = Database.execute_query(
@@ -175,6 +177,7 @@ def insert_fac_data_master_table(proc_table_info):
     )
     for row in result:
         fac_data_master_table_physical_columns.append(row[0])
+        fac_data_master_column_types[row[0]] = row[1]
 
     # [一時テーブル物理カラム名一覧]を取得
     work_table_physical_columns = []
@@ -268,6 +271,9 @@ def insert_fac_data_master_table(proc_table_info):
             f"COALESCE(NULLIF('{work_table['opattr_9']}', ' '), '{{}}')::jsonb || "
             f"COALESCE(NULLIF('{work_table['opattr_10']}', ' '), '{{}}')::jsonb)::text"
         )
+        # 数値型のデータ型リスト（マスタDBで実際に使用されている型のみ）
+        numeric_types = ["smallint", "integer", "bigint", "numeric"]
+
         Values = []
         for col in fac_data_master_table_physical_columns:
             if col == "id":
@@ -289,7 +295,10 @@ def insert_fac_data_master_table(proc_table_info):
                 # 一時テーブルに存在するがNULLの場合
                 elif work_table[col] is None:
                     Values.append("NULL")
-                # 一時テーブルに存在し、かつ文字列⇒数値型変換カラムでも日付⇒数値型変換カラムでもない場合
+                # 一時テーブルに存在し、マスタDBで数値型として定義されているカラムの場合
+                elif fac_data_master_column_types.get(col, "") in numeric_types:
+                    Values.append(str(work_table[col]))
+                # 一時テーブルに存在し、マスタDBで文字列型として定義されているカラムの場合
                 else:
                     Values.append(f"'{work_table[col]}'")
             # 上記以外で一時テーブルに存在しない場合
