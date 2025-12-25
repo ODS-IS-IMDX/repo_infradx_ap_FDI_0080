@@ -370,7 +370,7 @@ def update_import_management_all(
 # 一時DBのテーブル削除
 def drop_work_table(import_table_info):
     for table_info in import_table_info:
-        query = f"DROP TABLE IF EXISTS {DB_WORK_SCHEMA}.{table_info['work_table_name']}"
+        query = f"DROP TABLE {DB_WORK_SCHEMA}.{table_info['work_table_name']}"
         try:
             Database.execute_query(db_connection, logger, query, raise_exception=True)
         except Exception:
