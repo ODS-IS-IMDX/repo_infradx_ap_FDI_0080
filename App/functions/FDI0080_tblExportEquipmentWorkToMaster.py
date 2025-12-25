@@ -374,7 +374,7 @@ def drop_work_table(import_table_info):
         try:
             Database.execute_query(db_connection, logger, query, raise_exception=True)
         except Exception:
-            logger.warning("BPW0019", "削除", table_info["work_table_name"])
+            logger.warning("BPW0019", table_info["work_table_name"])
 
 
 # メイン処理
