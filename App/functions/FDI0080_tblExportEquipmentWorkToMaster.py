@@ -241,6 +241,7 @@ def insert_fac_data_master_table(proc_table_info):
         elif col == "geom":
             select_expressions.append(f"(ST_Dump({work_table_name_full}.geom)).geom")
         elif col in numeric_columns:
+            # 数値型カラムのクエリ作成
             work_col = f"{work_table_name_full}.{col}"
             select_expressions.append(
                 f"CASE WHEN NULLIF(TRIM({work_col}::text), '') IS NULL "
@@ -248,6 +249,7 @@ def insert_fac_data_master_table(proc_table_info):
                 f"'[^0-9]', '', 'g')::numeric END"
             )
         elif col in date_columns:
+            # 日付型カラムのクエリ作成
             work_col = f"{work_table_name_full}.{col}"
             select_expressions.append(
                 f"CASE WHEN NULLIF(TRIM({work_col}::text), '') IS NULL THEN NULL::date "
