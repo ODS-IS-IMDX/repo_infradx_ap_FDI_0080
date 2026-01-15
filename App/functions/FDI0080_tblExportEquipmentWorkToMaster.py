@@ -198,139 +198,93 @@ def insert_fac_data_master_table(proc_table_info):
     for row in result:
         work_table_physical_columns.append(row[0])
 
-    # 一時テーブルの情報をすべて取得
-    work_table_record = []
-    query = f"SELECT * FROM {DB_WORK_SCHEMA}.{proc_table_info['work_table_name']}"
-    result = Database.execute_query(
-        db_connection,
-        logger,
-        query,
-        fetchall=True,
-    )
-    for row in result:
-        work_table_record.append(row)
+    # シークレット設定値(バッチ)から[数値型カラム一覧]を取得し配列に格納する
+    numeric_columns = secret_props.get("numeric_columns").split(",")
 
-    # シークレット設定値(バッチ)から[文字列⇒数値型変換カラム一覧]を取得し配列に格納する
-    str_to_num_columns = []
-    str_to_num_columns = secret_props.get("char_to_numeric_columns").split(",")
-
-    # シークレット設定値(バッチ)から[日付→数値型変換カラム一覧]を取得し配列に格納する
-    date_to_num_columns = []
-    date_to_num_columns = secret_props.get("date_to_numeric_columns").split(",")
+    # シークレット設定値(バッチ)から[日付型カラム一覧]を取得し配列に格納する
+    date_columns = secret_props.get("date_columns").split(",")
 
     # 一時テーブル名からプレフィックスのwork_を取り除く
-    prefix_mg_id = None
     prefix_mg_id = proc_table_info["work_table_name"].replace("work_", "")
 
-    for idx, record in enumerate(work_table_record, start=1):
-        work_table = dict(zip(work_table_physical_columns, record))
+    # opt_attr用のSQL（opattr_1~10を結合）
+    opt_attr_sql = (
+        "(COALESCE(NULLIF(opattr_1, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_2, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_3, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_4, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_5, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_6, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_7, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_8, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_9, ''), '{}')::jsonb || "
+        "COALESCE(NULLIF(opattr_10, ''), '{}')::jsonb)::text"
+    )
 
-        # 一時テーブル物理カラム名が[文字列⇒数値型変換カラム一覧]または[日付→数値型変換カラム一覧]に含まれている場合、カラム値を変換
-        for key in work_table.keys():
-            if key in str_to_num_columns:
-                work_table[key] = (
-                    f"CASE WHEN NULLIF(TRIM({DB_WORK_SCHEMA}."
-                    f"{proc_table_info['work_table_name']}.{key}), '') IS NULL "
-                    f"THEN NULL ELSE REGEXP_REPLACE({DB_WORK_SCHEMA}."
-                    f"{proc_table_info['work_table_name']}.{key}, "
-                    f"'[^0-9]', '', 'g')::numeric END"
-                )
-            elif key in date_to_num_columns:
-                work_table[key] = (
-                    f"CASE WHEN {DB_WORK_SCHEMA}."
-                    f"{proc_table_info['work_table_name']}.{key} IS NULL "
-                    f"THEN NULL ELSE TO_CHAR({DB_WORK_SCHEMA}."
-                    f"{proc_table_info['work_table_name']}.{key}, "
-                    f"'YYYYMMDD')::numeric END"
-                )
+    # SELECT句の構築
+    select_expressions = []
+    work_table_name_full = f"{DB_WORK_SCHEMA}.{proc_table_info['work_table_name']}"
 
-        # 任意項目1～10を結合してひとつにまとめる
-        for key in [
-            "opattr_1",
-            "opattr_2",
-            "opattr_3",
-            "opattr_4",
-            "opattr_5",
-            "opattr_6",
-            "opattr_7",
-            "opattr_8",
-            "opattr_9",
-            "opattr_10",
-        ]:
-            if work_table[key] is None:
-                work_table[key] = " "
-        opt_attr = (
-            f"(COALESCE(NULLIF('{work_table['opattr_1']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_2']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_3']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_4']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_5']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_6']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_7']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_8']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_9']}', ' '), '{{}}')::jsonb || "
-            f"COALESCE(NULLIF('{work_table['opattr_10']}', ' '), '{{}}')::jsonb)::text"
+    for col in fac_data_master_table_physical_columns:
+        if col == "id":
+            select_expressions.append("ROW_NUMBER() OVER (ORDER BY seq_no)")
+        elif col == "mg_id":
+            select_expressions.append(
+                f"'{prefix_mg_id}_' || ROW_NUMBER() OVER (ORDER BY seq_no)"
+            )
+        elif col == "opt_attr":
+            select_expressions.append(opt_attr_sql)
+        elif col == "created_by":
+            select_expressions.append("'system'")
+        elif col == "created_at":
+            select_expressions.append("NOW()")
+        elif col == "geom":
+            select_expressions.append(f"(ST_Dump({work_table_name_full}.geom)).geom")
+        elif col in numeric_columns:
+            # 数値型カラムのクエリ作成
+            work_col = f"{work_table_name_full}.{col}"
+            select_expressions.append(
+                f"CASE WHEN NULLIF(TRIM({work_col}::text), '') IS NULL "
+                f"THEN NULL ELSE REGEXP_REPLACE({work_col}::text, "
+                f"'[^0-9]', '', 'g')::numeric END"
+            )
+        elif col in date_columns:
+            # 日付型カラムのクエリ作成
+            work_col = f"{work_table_name_full}.{col}"
+            select_expressions.append(
+                f"CASE WHEN NULLIF(TRIM({work_col}::text), '') IS NULL THEN NULL::date "
+                f"WHEN pg_typeof({work_col})::text = 'date' THEN {work_col}::date "
+                f"ELSE TO_DATE({work_col}::text, 'YYYYMMDD') END"
+            )
+        elif col in work_table_physical_columns:
+            select_expressions.append(f"{work_table_name_full}.{col}")
+        else:
+            select_expressions.append("NULL")
+
+    query = (
+        f"INSERT INTO {DB_FAC_SCHEMA}.{proc_table_info['fac_data_master_table_name']} "
+        f"({', '.join(fac_data_master_table_physical_columns)}) "
+        f"SELECT {', '.join(select_expressions)} "
+        f"FROM {work_table_name_full}"
+    )
+
+    try:
+        Database.execute_query_no_commit(
+            db_connection, logger, query, raise_exception=True
         )
-        # 数値型のデータ型リスト（マスタDBで実際に使用されている型のみ）
-        numeric_types = ["smallint", "integer", "bigint", "numeric"]
-
-        Values = []
-        for col in fac_data_master_table_physical_columns:
-            if col == "id":
-                Values.append(str(idx))
-            elif col == "mg_id":
-                Values.append(f"'{prefix_mg_id}_{idx}'")
-            elif col == "opt_attr":
-                Values.append(opt_attr)
-            elif col == "created_by":
-                Values.append("'system'")
-            elif col == "created_at":
-                Values.append("NOW()")
-            elif col in work_table.keys():
-                # 一時テーブルに存在し、かつ文字列⇒数値型変換カラムまたは日付⇒数値型変換カラムの場合
-                if (col in str_to_num_columns or col in date_to_num_columns) and (
-                    work_table[col].startswith("CASE") or work_table[col] == "NULL"
-                ):
-                    Values.append(f"{work_table[col]}")
-                # 一時テーブルに存在するがNULLの場合
-                elif work_table[col] is None:
-                    Values.append("NULL")
-                # 一時テーブルに存在し、マスタDBで数値型として定義されているカラムの場合
-                elif fac_data_master_column_types.get(col, "") in numeric_types:
-                    Values.append(str(work_table[col]))
-                # 一時テーブルに存在し、マスタDBで文字列型として定義されているカラムの場合
-                else:
-                    Values.append(f"'{work_table[col]}'")
-            # 上記以外で一時テーブルに存在しない場合
-            else:
-                Values.append("NULL")
-
-        query = (
-            f"INSERT INTO {DB_FAC_SCHEMA}."
-            f"{proc_table_info['fac_data_master_table_name']} "
-            f"({', '.join(fac_data_master_table_physical_columns)}) "
-            f"SELECT {', '.join(Values)} "
-            f"FROM {DB_WORK_SCHEMA}.{proc_table_info['work_table_name']}"
+    except Exception:
+        logger.error(
+            "BPE0044",
+            "登録",
+            proc_table_info["import_id"],
+            proc_table_info["fac_data_master_table_name"],
         )
-
-        try:
-            Database.execute_query_no_commit(
-                db_connection, logger, query, raise_exception=True
-            )
-        except Exception:
-            logger.error(
-                "BPE0044",
-                "登録",
-                proc_table_info["import_id"],
-                proc_table_info["fac_data_master_table_name"],
-            )
-            error_detail = get_message("BPE0044").format(
-                "登録",
-                proc_table_info["import_id"],
-                proc_table_info["fac_data_master_table_name"],
-            )
-            # 取込管理テーブルエラー更新（全レコード）
-            update_import_management_all(import_id_list, error_detail, True)
+        error_detail = get_message("BPE0044").format(
+            "登録",
+            proc_table_info["import_id"],
+            proc_table_info["fac_data_master_table_name"],
+        )
+        update_import_management_all(import_id_list, error_detail, True)
 
 
 # 取込管理テーブル更新（全レコード）
