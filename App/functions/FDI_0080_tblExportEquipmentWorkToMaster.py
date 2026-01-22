@@ -1,5 +1,5 @@
 """
-FDI0080_tblExportEquipmentWorkToMaster.py
+FDI_0080_tblExportEquipmentWorkToMaster.py
 
 処理名:
     TBL出力（一時DB→設備データ管理マスタDB）
@@ -8,7 +8,7 @@ FDI0080_tblExportEquipmentWorkToMaster.py
     一時DBから取得したデータに管理用ID等の属性を追加し、設備データマスタDBに登録する。一時DBのデータは削除する。
 
 実行コマンド形式:
-    python3 [バッチ格納先パス]/FDI0080_tblExportEquipmentWorkToMaster.py
+    python3 [バッチ格納先パス]/FDI_0080_tblExportEquipmentWorkToMaster.py
     --import_id=[起動パラメータ.取込ID]
 """
 
@@ -26,7 +26,7 @@ from util.getImportManagementTableName import get_import_management_table_name
 from util.updateImportManagement import update_import_management
 
 log_manager = LogManager()
-logger = log_manager.get_logger("FDI0080_TBL出力（一時DB→設備データ管理マスタDB）")
+logger = log_manager.get_logger("FDI_0080_TBL出力（一時DB→設備データ管理マスタDB）")
 db_connection = Database.get_mstdb_connection(logger)
 config = read_config(logger)
 
