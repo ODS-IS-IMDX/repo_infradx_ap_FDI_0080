@@ -313,7 +313,7 @@ def update_import_management_all(
                 db_connection,
                 logger,
                 proc_import_id,
-                "40",
+                50",
                 error_detail,
                 None,
                 None,
