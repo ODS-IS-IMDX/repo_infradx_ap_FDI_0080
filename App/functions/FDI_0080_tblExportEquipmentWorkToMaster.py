@@ -168,7 +168,7 @@ def insert_fac_data_master_table(proc_table_info):
         "ORDER BY ordinal_position"
     )
 
-    result = Database.execute_query(
+    result = Database.execute_query_no_commit(
         db_connection,
         logger,
         query,
@@ -188,7 +188,7 @@ def insert_fac_data_master_table(proc_table_info):
         f"WHERE table_schema = '{DB_WORK_SCHEMA}' AND table_name = %s "
     )
 
-    result = Database.execute_query(
+    result = Database.execute_query_no_commit(
         db_connection,
         logger,
         query,
