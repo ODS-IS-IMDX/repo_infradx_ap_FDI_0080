@@ -70,10 +70,7 @@
         ※詳細は[リポジトリ一覧](#リポジトリ一覧)を参照
 
 4. PostgreSQL、PosgGISの使用準備が完了していることが必要です。
-    - PostGIS拡張を有効化
-    ```sql
-    CREATE EXTENSION IF NOT EXISTS postgis;
-    ```
+    - DDL実行については[repo_infradx_oss_DDL](https://github.com/infra-faci-pf/repo_infradx_oss_DDL)を参照してください。
 
 # 利用OSS一覧
 アプリケーションを利用するにあたり、以下OSSが必要です。
