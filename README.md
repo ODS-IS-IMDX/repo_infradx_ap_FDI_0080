@@ -34,7 +34,7 @@
     - DDL実行については[repo_infradx_oss_DDL](https://github.com/infra-faci-pf/repo_infradx_oss_DDL)を参照してください。
 
 # リポジトリ利用方法
-各環境の詳細は[前提条件](#前提条件)をご参照ください。
+必要なソフトウェアやサービスの詳細は[前提条件](#前提条件)をご参照ください。
 1. 依存リポジトリ（repo_infradx_ap_BSC_0020）から共通モジュールをコピーします。
     ```bash
     # common、config、core、utilディレクトリのファイルをコピー
