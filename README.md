@@ -68,9 +68,9 @@
 5. Pythonスクリプトを実行します。
     ```bash
     cd App/functions
-    python FDI0080_tblExportEquipmentWorkToMaster.py --import_id=<取込ID>
+    python FDI_0080_tblExportEquipmentWorkToMaster.py --import_id=<取込ID>
     ```
-    ※取込IDは必須パラメータです
+    ※取込IDは必須パラメータです（複数指定可能、カンマ区切り）
 
 6. 実行ログを確認します。
     処理実行後、以下のようなログが出力されます。
@@ -94,6 +94,9 @@ Python関連パッケージは App/requirements.txt に記載しており、`pip
 | Python      | 3.13.9     | PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2 |
 | PostgreSQL  | 16.8       | The PostgreSQL Licence                       |
 | PostGIS     | 3.4        | GNU General Public License version 2         |
+| boto3       | 1.40.74    | Apache License 2.0                           |
+| psycopg2-binary | 2.9.10 | GNU Lesser General Public License v3         |
+| concurrent-log-handler | 0.9.28 | Apache License 2.0              |
 
 # 再配布OSS一覧
 本リポジトリには再配布するOSSは含まれていません。
