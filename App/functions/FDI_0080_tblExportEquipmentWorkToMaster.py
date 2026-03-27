@@ -246,9 +246,10 @@ def insert_fac_data_master_table(proc_table_info):
             # 数値型カラムのクエリ作成
             work_col = f"{work_table_name_full}.{col}"
             select_expressions.append(
-                f"CASE WHEN NULLIF(TRIM({work_col}::text), '') IS NULL "
+                f"CASE WHEN NULLIF(REGEXP_REPLACE(NULLIF(TRIM({work_col}::text), ''), "
+                f"'[^0-9-]', '', 'g'), '') IS NULL "
                 f"THEN NULL ELSE REGEXP_REPLACE({work_col}::text, "
-                f"'[^0-9]', '', 'g')::numeric END"
+                f"'[^0-9-]', '', 'g')::numeric END"
             )
         elif col in date_columns:
             # 日付型カラムのクエリ作成
@@ -331,6 +332,7 @@ def drop_work_table(import_table_info):
             Database.execute_query(db_connection, logger, query, raise_exception=True)
         except Exception:
             logger.warning("BPW0019", table_info["work_table_name"])
+            logger.process_warning_end()
 
 
 # メイン処理
